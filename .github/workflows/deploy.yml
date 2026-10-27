@@ -1,0 +1,84 @@
+name: Build & deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Refresh the Eskom data every 6 hours (UTC). Eskom updates most files daily.
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+# Least privilege: nothing by default; each job asks only for what it needs.
+permissions: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # 1. Pull fresh Eskom CSVs and commit them. This is the only job that can
+  #    write to the repo, and it installs no npm packages (the script uses
+  #    Node built-ins only), so third-party code never sees a write token.
+  refresh-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Refresh Eskom data
+        # Never block a deploy on Eskom's portal; the script keeps the last good data.
+        continue-on-error: true
+        run: node scripts/fetch-eskom.mjs
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/eskom.json
+          git diff --cached --quiet || (git commit -m "chore(data): refresh Eskom data [skip ci]" && git push)
+
+  # 2. Install dependencies and build with read-only access.
+  build:
+    needs: refresh-data
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main # includes the data commit from the previous job
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  # 3. Publish. Only this job can deploy to Pages.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
