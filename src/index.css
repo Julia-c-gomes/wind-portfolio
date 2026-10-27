@@ -212,20 +212,12 @@
     0 6px 14px -8px rgb(8 22 10 / 0.55);
 }
 
-.farm-rotor {
-  animation: farm-spin var(--d, 6s) linear infinite;
-}
 .streamline {
   animation: stream-flow 2.4s linear infinite;
 }
 @keyframes stream-flow {
   to {
     stroke-dashoffset: -24;
-  }
-}
-@keyframes farm-spin {
-  to {
-    transform: rotate(360deg);
   }
 }
 
@@ -247,11 +239,6 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-  /* The footer turbines keep turning, just slower: small, slow and at the very end of the page. */
-  .farm-rotor {
-    animation-duration: calc(var(--d, 6s) * 1.6) !important;
-    animation-iteration-count: infinite !important;
   }
 }
 

@@ -1,4 +1,5 @@
-import { motion, useScroll, useTransform } from "framer-motion"
+import { useMotionValueEvent, useScroll } from "framer-motion"
+import { useRef } from "react"
 
 /**
  * Flat vector turbine: the poster shown while the 3D scene loads, and the
@@ -6,7 +7,12 @@ import { motion, useScroll, useTransform } from "framer-motion"
  */
 export function TurbineSvg({ className, still = false }: { className?: string; still?: boolean }) {
   const { scrollY } = useScroll()
-  const rotate = useTransform(scrollY, (y) => (still ? 0 : (y * 0.26) % 360))
+  // An SVG transform attribute, not a CSS transform: it rotates about the hub the
+  // same way in every browser (Firefox places CSS transform origins differently).
+  const rotor = useRef<SVGGElement>(null)
+  useMotionValueEvent(scrollY, "change", (y) => {
+    if (!still) rotor.current?.setAttribute("transform", `rotate(${((y * 0.26) % 360).toFixed(2)})`)
+  })
 
   return (
     <svg viewBox="0 0 600 900" className={className} aria-hidden>
@@ -35,14 +41,14 @@ export function TurbineSvg({ className, still = false }: { className?: string; s
       <rect x="262" y="290" width="96" height="38" rx="19" fill="#f6f8fd" />
       <rect x="334" y="290" width="8" height="38" fill="#3a6cf4" />
       <g transform="translate(300 309)">
-        <motion.g style={{ rotate }}>
+        <g ref={rotor}>
           {[0, 120, 240].map((a) => (
             <g key={a} transform={`rotate(${a})`}>
               <path d="M-11 -16 C-26 -90 -22 -200 -6 -292 L6 -292 C30 -190 38 -90 16 -16 Z" fill="url(#tw-blade)" />
               <path d="M-8.2 -256 C-7.2 -272 -6.6 -282 -6 -292 L6 -292 C8.5 -280 10.4 -268 12.2 -256 Z" fill="#ff6a3d" />
             </g>
           ))}
-        </motion.g>
+        </g>
         <circle r="20" fill="#ffffff" />
         <circle r="20" fill="none" stroke="#c9d1e6" strokeWidth="2" />
       </g>

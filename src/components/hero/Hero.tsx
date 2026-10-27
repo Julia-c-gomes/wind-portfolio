@@ -102,8 +102,6 @@ export function Hero() {
   const sceneOpacity = useTransform(p, [0.8, 0.97], [1, 0])
   const hillsOpacity = useTransform(p, [0.6, 0.82], [1, 0])
   const cueOpacity = useTransform(p, [0, 0.06], [1, 0])
-  const outroOpacity = useTransform(p, [0.84, 0.96], [0, 1])
-  const outroY = useTransform(p, [0.84, 0.96], [40, 0])
 
   return (
     <section id="home" ref={ref} aria-labelledby="hero-title" className={cn("relative", reduced ? "h-dvh min-h-[620px]" : "h-[280vh]")}>
@@ -198,19 +196,6 @@ export function Hero() {
             </p>
           </motion.div>
 
-          {/* phase 3: hand-off to the catalogue */}
-          <motion.div
-            aria-hidden
-            style={reduced ? { display: "none" } : { opacity: outroOpacity, y: outroY }}
-            className="pointer-events-none absolute inset-x-5 top-1/2 -translate-y-1/2 text-center"
-          >
-            <p className="font-mono text-[11px] tracking-[0.24em] text-lime uppercase">From wind to wire</p>
-            <p className="mt-3 font-display text-[clamp(34px,6vw,84px)] leading-[0.95] font-bold tracking-[-0.04em] text-sky uppercase">
-              Six folders.
-              <br />
-              <span className="text-outline [--outline-fill:#0b0f1c]">One process.</span>
-            </p>
-          </motion.div>
         </div>
 
         <motion.p

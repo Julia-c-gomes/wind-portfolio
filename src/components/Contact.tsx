@@ -1,5 +1,6 @@
 import { motion } from "framer-motion"
 import { ArrowUpRight, Mail } from "lucide-react"
+import { useEffect, useRef } from "react"
 
 import { GithubIcon, LinkedinIcon } from "@/components/ui/brand-icons"
 import { contact, profile } from "@/content/portfolio"
@@ -43,10 +44,48 @@ const FARM = [
   { x: 975, s: 0.7, d: 5.8 },
 ]
 
+type Turbine = (typeof FARM)[number]
+/** sit each tower on the hill */
+const baseY = (t: Turbine, i: number) => 150 + Math.abs(t.x - 640) * 0.04 + (i % 2) * 3
+const hubY = (t: Turbine, i: number) => baseY(t, i) - 120 * t.s
+
 function WindFarm() {
+  // keeps turning with reduced motion on, just slower
+  const pace = useReduced() ? 1.6 : 1
+  const svg = useRef<SVGSVGElement>(null)
+  const rotors = useRef<(SVGGElement | null)[]>([])
+
+  // Rotors are turned by setting each group's SVG transform attribute every frame:
+  // the same result in every browser (CSS transform origins on SVG differ in
+  // Firefox, and SMIL doesn't start reliably on SVG added after page load).
+  // Runs only while the farm is on screen.
+  useEffect(() => {
+    let raf = 0
+    let t0 = 0
+    const tick = (now: number) => {
+      t0 ||= now
+      const t = (now - t0) / 1000
+      FARM.forEach((f, i) => {
+        const angle = (i * 37 + (t / (f.d * pace)) * 360) % 360
+        rotors.current[i]?.setAttribute("transform", `rotate(${angle.toFixed(2)} ${f.x} ${hubY(f, i).toFixed(1)})`)
+      })
+      raf = requestAnimationFrame(tick)
+    }
+    const io = new IntersectionObserver(([e]) => {
+      cancelAnimationFrame(raf)
+      if (e.isIntersecting) raf = requestAnimationFrame(tick)
+    })
+    if (svg.current) io.observe(svg.current)
+    return () => {
+      cancelAnimationFrame(raf)
+      io.disconnect()
+    }
+  }, [pace])
+
   return (
     // negative top margin (a % of the width, so it scales) pulls the farm up over the card's bottom edge
     <svg
+      ref={svg}
       viewBox="0 0 1260 190"
       preserveAspectRatio="xMidYMax meet"
       overflow="visible"
@@ -55,25 +94,23 @@ function WindFarm() {
     >
       <path d="M0 182 C220 170 420 150 640 148 C860 146 1060 168 1260 178 L1260 190 L0 190Z" fill="#131a2c" />
       {FARM.map((t, i) => {
-        const h = 120 * t.s
-        // sit each tower on the hill
-        const base = 150 + Math.abs(t.x - 640) * 0.04 + (i % 2) * 3
-        const hubY = base - h
+        const base = baseY(t, i)
+        const hub = hubY(t, i)
         const r = 48 * t.s
         return (
           <g key={t.x} opacity={0.55 + Math.min(t.s, 1) * 0.45}>
-            <path d={`M${t.x - 1.3 * t.s} ${hubY} L${t.x + 1.3 * t.s} ${hubY} L${t.x + 3.2 * t.s} ${base} L${t.x - 3.2 * t.s} ${base}Z`} fill="#3b445e" />
-            <g className="farm-rotor" style={{ transformOrigin: `${t.x}px ${hubY}px`, ["--d" as string]: `${t.d}s`, animationDelay: `${-i * 0.7}s` }}>
+            <path d={`M${t.x - 1.3 * t.s} ${hub} L${t.x + 1.3 * t.s} ${hub} L${t.x + 3.2 * t.s} ${base} L${t.x - 3.2 * t.s} ${base}Z`} fill="#3b445e" />
+            <g ref={(el) => void (rotors.current[i] = el)}>
               {[0, 120, 240].map((a) => (
                 <path
                   key={a}
-                  transform={`rotate(${a} ${t.x} ${hubY})`}
-                  d={`M${t.x - 1.7 * t.s} ${hubY} Q${t.x - 2.6 * t.s} ${hubY - r * 0.5} ${t.x} ${hubY - r} Q${t.x + 3.8 * t.s} ${hubY - r * 0.45} ${t.x + 2.1 * t.s} ${hubY}Z`}
+                  transform={`rotate(${a} ${t.x} ${hub})`}
+                  d={`M${t.x - 1.7 * t.s} ${hub} Q${t.x - 2.6 * t.s} ${hub - r * 0.5} ${t.x} ${hub - r} Q${t.x + 3.8 * t.s} ${hub - r * 0.45} ${t.x + 2.1 * t.s} ${hub}Z`}
                   fill={i % 4 === 1 ? "#c2f84f" : "#a3abc2"}
                 />
               ))}
             </g>
-            <circle cx={t.x} cy={hubY} r={2.6 * t.s} fill="#eaedf6" />
+            <circle cx={t.x} cy={hub} r={2.6 * t.s} fill="#eaedf6" />
           </g>
         )
       })}
